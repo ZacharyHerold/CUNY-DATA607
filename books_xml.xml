@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+ <books>
+ <book pages="178" publisher="Cornell University">
+ <title>Imperialism and World Economy</title>
+ <author>
+ <first_name>Nikolai</first_name>
+ <last_name>Bukharin</last_name>
+ </author>
+ <year>1972</year>
+ </book>
+ <book pages="258" publisher="Yale University">
+ <title>Why Marx Was Right</title>
+ <author>
+ <first_name>Terry</first_name>
+ <last_name>Eagleton</last_name>
+ </author>
+ <year>2011</year>
+ </book>
+ <book pages="368" publisher="Harvard University">
+ <title>Ruling America: A History of Wealth and Power in a Democracy</title>
+ <author>
+ <first_name>Steve</first_name>
+ <last_name>Fraser</last_name>
+ <first_name>Gary</first_name>
+ <last_name>Gerstle</last_name>
+ </author>
+ <year>2005</year>
+ </book>
+ </books>

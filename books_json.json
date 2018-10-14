@@ -1,0 +1,26 @@
+﻿{"social economy books" :[
+{
+"title" : "Imperialism and World Economy",
+"author_first" : "Nikolai",
+"author_last": "Bukharin",
+"year" : "1972",
+"pages": 178,
+"publisher" : "Cornell University"
+},
+{
+"title" : "Why Marx Was Right",
+"author_first" : "Terry",
+"author_last": "Eagleton",
+"year" : "2011",
+"pages": 258,
+"publisher" : "Yale University"
+},
+{
+"title" : "Ruling America: A History of Wealth and Power in a Democracy",
+"author_first" : ["Steve", "Gary"],
+"author_last": ["Fraser", "Gerstle"],
+"year" : "2005",
+"pages": 368,
+"publisher" : "Harvard University"
+}]
+}
