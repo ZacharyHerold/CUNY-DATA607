@@ -1,0 +1,112 @@
+---
+title: "CUNY DATA607_Wk7_Zherold_Scraping"
+output: html_document
+---
+
+In this assignment, I load Notepad-generated HTML, XML, and JSON files, which were uploaded to Github, into R as dataframes. 
+
+```{r, message=FALSE,warning=FALSE}
+library(XML)
+library(xml2)
+library(jsonlite)
+library(httr)
+library(knitr)
+```
+
+#### HTML Table >> R, using httr's GET ()... 
+
+
+```{r}
+dfhtml <- GET("https://raw.githubusercontent.com/ZacharyHerold/CUNY-DATA607/master/books_html.html")
+dfhtml 
+```
+
+
+```{r}
+class(dfhtml)
+```
+
+
+#### ... then converting it into a dataframe with readHTMLTable()
+
+Not entirely sure why I had to repeat the GET() line of code again here in this chunk. When I don't have it， I get Error in rawToChar(dfhtml$content) : argument 'x' must be a raw vector
+
+```{r}
+## Load HTML Table
+dfhtml <- GET("https://raw.githubusercontent.com/ZacharyHerold/CUNY-DATA607/master/books_html.html")
+dfhtml <- as.data.frame(readHTMLTable(rawToChar(dfhtml$content), stringsAsFactors = F))
+names(dfhtml) <- c("Title", "Author_First", "Author_Last", "DoP")
+kable(dfhtml) 
+```
+
+```{r}
+class(dfhtml)
+```
+ 
+ Further manipulations are required to separate the multiple authors. One possible way could involve, first, creating NULL Author_First2 and Author_Last2 columns, then using stringr to do strsplit the Author columns at the comma, after they had been unlisted.  
+
+
+#### XML Document >> R, using GET() and XMLParse()...
+
+* The httr package did prove more reliable than RCurl when Knitting the Markdown file to html. The readHTMLTable was missing function calls (Handlers, etc.) when using getURL().
+
+
+```{r}
+## Load XML File
+url.xml <- GET("https://raw.githubusercontent.com/ZacharyHerold/CUNY-DATA607/master/books_xml.xml")
+dfxml <- xmlParse(url.xml)
+dfxml
+```
+
+
+#### ...and then xmlToDataFrame()
+
+```{r}
+books.df <- xmlToDataFrame(dfxml, stringsAsFactors = FALSE)
+kable(books.df)
+```
+
+Should debug XML file as follows:
+
+    <author>
+      <first_name>Steve</first_name>
+      <last_name>Fraser</last_name>
+    </author>  
+    <author>
+      <first_name>Gary</first_name>
+      <last_name>Gerstle</last_name>
+    </author>
+    
+
+
+#### JSON Document >> R, using httr's GET()
+
+```{r}
+## Load JSON File
+url.json <- GET("https://raw.githubusercontent.com/ZacharyHerold/CUNY-DATA607/master/books_json.json")
+url.json
+```
+
+#### .... readLines(), editing out the garbage at the beginning of the JSON string...
+.
+```{r}
+url.json <- "https://raw.githubusercontent.com/ZacharyHerold/CUNY-DATA607/master/books_json.json"
+json.data <- readLines(url.json)
+json.data[[1]] <- "{\"social economy books\" :["
+```
+
+Checking the class of the readLine's output. Had difficulty without readLines using the fromJSON() function. 
+
+```{r}
+class(json.data)
+```
+
+#### .... and finally coercing to a dataframe with the as.data.frame() function. 
+
+```{r results = 'asis'}
+dfjson <- fromJSON(json.data)
+dfjson <- as.data.frame(dfjson)
+names(dfjson) <- c("Title","Author_First","Author_Last","Year","Pages","Publisher")
+kable(dfjson)
+```
+
