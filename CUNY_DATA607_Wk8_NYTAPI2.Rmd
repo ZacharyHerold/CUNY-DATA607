@@ -1,0 +1,147 @@
+---
+title: "CUNY DATA607_Wk9_API"
+author: "Zachary Herold"
+date: "October 28, 2018"
+output: html_document
+---
+
+```{r message = FALSE, warning = FALSE}
+library(httr)
+library(jsonlite)
+library(stringr)
+library(pander)
+```
+
+## NYT API Access Denied
+
+In Week 9's assignment, the task is to choose one of the New York Times APIs, construct an interface in R to read in the JSON data, and transform it to an R dataframe.
+
+I first checked NYTimes public specs on Github to find the API URL format. 
+
+https://github.com/NYTimes/public_api_specs/commit/fca6f6c9def8eede59726f3b06a2734f07e689ee
+
+My inital interest was in the Top Stories category. 
+
+I set up a concatenated URL from the host, path, query and api-key for the API call. 
+
+Here, the API-key is concatenated into the query directly, though I would rather use Set environment function (Sys.setenv) to hide secrets.
+
+```{r}
+host <- "http://api.nytimes.com"
+path <- "/svc/topstories/v2.json"
+query <- "?order=by-date"
+api_key <- "&api-key=af67b77762da45ccbdcded839b22ce8a"
+
+nyt.url <- str_c(host,path, query, api_key, sep = "", collapse = NULL)
+
+nyt.url
+```
+
+The GET method in Wickham's httr package makes a request to NYT's server, only to be rejected.
+
+
+```{r}
+r <- GET(nyt.url, verbose())
+## <- HTTP/1.1 403 Forbidden
+```
+
+HTTP/1.1 403 Forbidden
+Access-Control-Allow-Credentials: false 
+
+
+```{r}
+http_status(r)
+```
+
+The Top Stories seem off limits. The New York Times website is off-limits in China, blocked by the Great Firewall. I suppose such a news feed too may be suppressed.
+
+
+## Movie Requests and Bestseller Lists A-Ok
+
+When we set the path to movie reviews, API access is suddenly permitted. 
+
+```{r}
+path <- "/svc/movies/v2/reviews/dvd-picks.json"
+nyt.url <- str_c(host, path, query, api_key, sep = "", collapse = NULL)
+
+r <- GET(nyt.url, verbose())
+```
+
+Booklists are apparently also not subject to the Great Firewall. 
+
+```{r}
+path <- "/svc/books/v2/lists/overview.json"
+query <- "?published_date=2018-01-01"
+
+nyt.url <- str_c(host, path, query, api_key, sep = "", collapse = NULL)
+
+raw.result2 <- GET(nyt.url, verbose())
+```
+
+
+```{r}
+http_status(raw.result2)
+```
+
+## Creating the Bestsellers Dataframe
+
+Now, to create a dataframe of the Bestselling Books on Jan 1, 2018. 
+
+First, extracting the content from the body as a JSON, then reading it into R before furthering munging. 
+
+```{r}
+this.raw.content2 <- content(raw.result2, "text", encoding='UTF-8')
+
+this.json2 <- fromJSON(this.raw.content2, flatten = TRUE)
+
+bestsellers <- this.json2$results$list
+```
+
+Here we are only concerned with the data in the books column. 
+
+```{r}
+names(bestsellers[[1]])
+```
+
+
+### Method 1, Works in RStudio, but doesn't when Knitting
+
+I then follow this procedure:
+
+(1) Unlisting the list of books into a vector;
+(2) From the list of lists books, forming a matrix from the transposed vector with rows equal to the number the books in the list, and columns equal to the number of book attributes.
+(3) Converting this matrix into a dataframe with column headings of the four attributes that I want to draw out.  
+
+
+```{r}
+books <- unlist(bestsellers[[1]]["books"])
+books <- matrix(t(books), nrow = 29, ncol = 5)
+books_df <- data.frame("Title" = books[21,], "Author" = books[4,], "Description" = books[12,], "Wks_Bestseller" = books[23,])
+books_df
+
+```
+
+### Method 2, Doesn't work in RStudio, but does when Knitting
+
+Note, these next lines of code in the jsonlite vignette did not work for me in RMarkdown due to: Error in bestsellers[[1, "books"]] : incorrect number of subscripts. See sources below. But, after knitting, this code mysterioudly works, though it didn't in RStudio. 
+
+```{r}
+category1 <- bestsellers[[1, "books"]]
+df <- subset(category1, select = c("title", "author", "description", "weeks_on_list"))
+pander(df, style = 'rmarkdown')
+```
+
+
+
+The following links were helpful to this assignment.
+
+Sources:
+
+https://www.programmableweb.com/news/how-to-access-any-restful-api-using-r-language/how-to/2017/07/21?page=2
+
+https://www.r-bloggers.com/accessing-apis-from-r-and-a-little-r-programming/
+
+https://rstudio-pubs-static.s3.amazonaws.com/223073_37195ccc31b846fc8c963e5d10416887.html
+
+https://cran.r-project.org/web/packages/jsonlite/vignettes/json-apis.html
+
