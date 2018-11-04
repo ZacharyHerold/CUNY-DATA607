@@ -1,0 +1,250 @@
+---
+title: "CUNY DATA607_Project4"
+author: "Zachary Herold"
+date: "November 4, 2018"
+output: html_document
+---
+
+In this assignment, I begin with a spam/ham dataset, then predict the class of new documents using a Naive Bayesian tool. I describe the spam/ham data, after transforming the plain text emails and excavating the most frequently occurring terms.  
+
+
+```{r warning = FALSE, message = FALSE}
+library(tm)
+library(tidytext)
+library(wordcloud)
+library("RColorBrewer")
+library(e1071)
+library(dplyr)
+```
+
+Sourcing the email files: The spam and ham files are saved in a local directory. There are about 1400 spam files and 2500 ham. 
+
+```{r}
+source <- DirSource("C:/Users/ZacharyHerold/Documents/DATA607/Project4/spamham/spam_2") #input path for spam files
+source2 <- DirSource("C:/Users/ZacharyHerold/Documents/DATA607/Project4/spamham/easy_ham") #input path for ham files
+length(source)
+length(source2)
+```
+
+These files are compiled into two distinct Corpuses.
+
+```{r}
+spam.corp <- Corpus(source, readerControl=list(reader=readPlain))
+ham.corp <- Corpus(source2, readerControl=list(reader=readPlain))
+```
+
+The corpuses content is cleaned via a CleanCorpus function, performing the following transformations:
+  - Removing \n line breaks
+  - Removing meta content between HTML tags
+  - Removing all header content before the subject line
+  - Changing to lower case 
+  - Removing punctuation
+  - Removing numbers
+  - Removing stop words, customized stop words (can and will) and words over 15 character long
+  - Stemming out the word suffixes
+  - Stripping out white space
+
+
+```{r}
+CleanCorpus <- function(corpus) {
+  toSpace <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+  tmp <- tm_map(corpus, toSpace, "\\n")
+  tmp <- tm_map(tmp, toSpace, "<.*?>")
+  tmp <- tm_map(tmp, toSpace, "^.*Subject: ")
+  tmp <- tm_map(tmp, content_transformer(tolower))
+  tmp <- tm_map(tmp, content_transformer(removePunctuation)) 
+  tmp <- tm_map(tmp, content_transformer(removeNumbers))
+  tmp <- tm_map(tmp,  removeWords, c(stopwords("english"),"can","will","[[:alpha:]]{15,}"))
+  tmp <- tm_map(tmp, content_transformer(stemDocument))  
+  tmp <- tm_map(tmp, content_transformer(stripWhitespace))
+}
+```
+
+
+Viewing the first spam content after the transformations. 
+
+```{r}
+clean.spam <- CleanCorpus(spam.corp)
+inspect(clean.spam[[1]])
+```
+
+Viewing the first ham content after the transformations. 
+
+```{r}
+clean.ham <- CleanCorpus(ham.corp)
+inspect(clean.spam[[1]])
+```
+
+I now separate out some training data, with which I wish to:
+
+  - Remove words that appear to frequently (likely meta language, not filtered out pereviously) and sparse data 
+  - List and visualize the most frequently appearing words that are left over
+  - Create wordclouds to visualize the different in content 
+  
+First I develop a customized sparse text removal function:
+
+
+```{r}
+CustomRemoveSparse <- function(x) {
+  ndocs <- length(x)
+  # ignore overly sparse terms (appearing in less than 5% of the documents)
+  minDocFreq <- ndocs * 0.05
+  # ignore overly common terms (appearing in more than 60% of the documents)
+  maxDocFreq <- ndocs * 0.6
+  x <- TermDocumentMatrix(x, control = list(bounds = list(global = c(minDocFreq, maxDocFreq))))
+}
+```
+
+
+The following indicate the non-sparse entries of the remaining data. I designate 75% of the data to be for training purposes. 
+
+```{r}
+no_spam_train <- round(length(clean.spam)*3/4)
+no_ham_train <- round(length(clean.ham)*3/4)
+tdm.spam <- CustomRemoveSparse(clean.spam[1:no_spam_train])
+tdm.spam
+```
+
+```{r}
+tdm.ham <- CustomRemoveSparse(clean.ham[1:no_ham_train])
+tdm.ham
+```
+
+Now, I create a function that will list words in the Term Document Matrix in order of frequency, above a pre-defined number of occurrences.
+
+```{r}
+MostFreq <- function(y,num){
+  m <- as.matrix(y, rownames = FALSE)
+  v <- sort(rowSums(m),decreasing=TRUE)
+  d <- data.frame(word = names(v),freq=v)
+  d <- subset(d, freq > num)
+}
+
+freq.spam <- MostFreq(tdm.spam, 500)
+head(freq.spam)
+```
+
+The #1 most frequent word is "free" among the spam. 
+
+```{r}
+barplot(freq.spam$freq, border = NA, names.arg = freq.spam$word, las = 2, ylim = c(0,max(freq.spam$freq)))
+```
+
+
+
+
+```{r}
+freq.ham <- MostFreq(tdm.ham, 600)
+head(freq.ham)
+
+```
+
+The #1 most frequent word is "use" among the ham. 
+
+
+```{r}
+barplot(freq.ham$freq, border = NA, names.arg = freq.ham$word, las = 2, ylim = c(0,max(freq.ham$freq)))
+```
+
+
+Two wordclouds visualize the discrepancies, first for the spam, then the ham. 
+
+```{r}
+set.seed(1234)
+wordcloud(words = freq.spam$word, freq = freq.spam$freq, min.freq = 500,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+```{r}
+wordcloud(words = freq.ham$word, freq = freq.ham$freq, min.freq = 600,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+Now I go on to build the training set, eventually rbinding the spam with the ham data. 
+
+```{r}
+#the spam training data, converted into TDM, then a tibble
+tdm.spam <- TermDocumentMatrix(clean.spam[1:no_spam_train])
+tdm.spam
+```
+
+I then:
+  - use the tidy-text package to arrange it into a long tibble, 
+  - subset so only words that appear more than 5 times are included,
+  - mark the data as spam in an extra column
+
+```{r}
+tidy.spam <- tidy(tdm.spam)
+tidy.spam <- subset(tidy.spam, tidy.spam$count >= 5)
+tidy.spam$type <- "spam"
+str(tidy.spam)
+```
+
+
+```{r}
+head(tidy.spam)
+```
+
+```{r}
+tidy.ham <- tidy(tdm.ham)
+tidy.ham <- subset(tidy.ham, tidy.ham$count >= 5)
+tidy.ham$type <- "ham"    
+```
+
+```{r}
+train.all <- rbind(tidy.spam, tidy.ham)
+head(train.all)
+```
+
+Finally, I create two sets of testing data, one with all spam, the other with all ham. 
+
+```{r}
+##assembling the testing data
+
+test.spam.corp <- clean.spam[no_spam_train+1:length(source)]
+test.ham.corp <- clean.ham[no_ham_train+1:length(source2)]
+        
+tdm.spam.test <- TermDocumentMatrix(test.spam.corp)
+tidy.spam.test <- tidy(tdm.spam.test)       
+tidy.spam.test <- subset(tidy.spam.test, tidy.spam.test$count >= 5)
+tidy.spam.test$type <- "spam" 
+
+tdm.ham.test <- TermDocumentMatrix(test.ham.corp)
+tidy.ham.test <- tidy(tdm.ham.test)       
+tidy.ham.test <- subset(tidy.ham.test, tidy.ham.test$count >= 5)
+tidy.ham.test$type <- "ham" 
+```
+
+
+Now, I seek to make use of the Naive Bayesian formula in the e1071 package. An predictive classifier is initialized based on the complete training data. 
+
+
+```{r}
+## Naive Bayes prediction
+
+email_classifier <- naiveBayes(train.all, factor(train.all$type))
+class(email_classifier)
+```
+
+After merging the test data into one tibble, I run it through the predictor. It is error-free in predicting the spam, with only 4.6% an error rate mis-classifing the ham as spam. 
+
+```{r}
+test.data <- rbind(tidy.spam.test, tidy.ham.test)
+preds3 <- predict(email_classifier, newdata=test.data)
+table(preds3, test.data$type)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
