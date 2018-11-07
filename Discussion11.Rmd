@@ -1,0 +1,43 @@
+---
+title: "CUNY DATA607_Wk11 Discussion"
+author: "Zachary Herold"
+date: "November 7, 2018"
+output: html_document
+---
+
+
+## Discussion 11: Recommendation Engine - Udemy.com
+
+The site chosen for this project is the online learning platform, Udemy.com, which has thousands of great courses in Data Science. Udemy basically hosts content from online content creators and sells them at a profit.
+
+The business model is intriquing, with compensation varying according to the form of marketing:
+
+* Instructors earn 97% of all tuition revenues if the instructor's own reputation or marketing attracts the student. 
+* Udemy retains 50% of the earnings if the student is attracted by the site's own marketing or other coursework, 
+* The instructor earns just 25% of the tuition if a Udemy promotional affiliate attracts the student to the site and course.
+
+(Note: In 2015, the top 10 instructors made more than $17 million in total revenue.)
+
+Thus, there is a monetized incentive for the recommendations to work, as purchases driven by clicks from the recommendation engine will directly boost profitability. 
+ As such, users are bombarded with 10+ recommendation panels, based on popularity (volume of high ratings), trending topics (derived from click-through rates and duration on page), and item-based filtering (i.e., model-based collaborative filtering, based on course similarities to previously purchased content. 
+ 
+Udemy prompts the user to give ratings throughout the course viewings in order to build out their ratings database. As bestselling courses gain traction, they gain prime real estate on the site homepage.  
+ 
+ 
+```{r echo=FALSE, fig.cap="Udemy's Multi-level Recommendations", out.width = '100%'}
+knitr::include_graphics("udemy1.gif")
+```
+ 
+ As for the Scenario Design Analysis:
+ 
+(1) The target audience of Udemy is professional adults. There are reportedly 25 million students and over 35,000 instructors (https://www.udemy.com/teaching/). 
+
+(2) The users want to boost their qualifications and skillset in computer science at the low cost of $12.99, with price points fluctating according to some algorithm.
+
+(3) Udemy hopes to satisfy consumer demand for cutting-edge content by offering open and category-based search function and by featuring courses aligned with their inferred interests. 
+
+
+
+```{r echo=FALSE, fig.cap="Udemy's Multi-level Recommendations", out.width = '100%'}
+knitr::include_graphics("udemy2.gif")
+```
